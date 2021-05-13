@@ -174,6 +174,11 @@ void MainComponent::paint(juce::Graphics& g) {
       getLookAndFeel().findColour(juce::ResizableWindow::backgroundColourId));
 
   // You can add your drawing code here!
+  if (!isPlaying()) {
+    drawPlayButton(playButton, true);
+  } else {
+    drawPlayButton(playButton, false);
+  }
 }
 
 void MainComponent::resized() {
@@ -222,9 +227,6 @@ void MainComponent::sliderValueChanged(Slider* slider) {
     level = slider->getValue();
   } else if (slider == &minPitchSlider) {
     minMidiPitch = slider->getValue();
-    // FIXME: temporarily using min midi pitch to test oscillators
-    currentFreq = midiToFreqTable[minMidiPitch];
-    phaseDelta = currentFreq / srate;
   } else if (slider == &maxPitchSlider) {
     maxMidiPitch = slider->getValue();
   } else if (slider == &playbackBpmSlider) {
@@ -251,12 +253,13 @@ void MainComponent::buttonClicked(Button* button) {
   if (button == &playButton) {
     if (isPlaying()) {
       audioSourcePlayer.setSource(nullptr);
-      drawPlayButton(playButton, true);
       amountsToPlay.clear();
     } else {
       audioSourcePlayer.setSource(this);
-      drawPlayButton(playButton, false);
       amountsToPlay = generateRandomAmounts(0, 0.5, 100, 25);
+      convertAmountsToNotes(amountsToPlay);
+      currentFreq = midiToFreqTable[amountsToPlay.begin()->first];
+      phaseDelta = currentFreq / srate;
     }
   }
 }
@@ -301,6 +304,20 @@ void MainComponent::generateSine(const AudioSourceChannelInfo& bufferToFill,
 
     for (int i = 0; i < bufferToFill.numSamples; i++) {
       channelData[i] = level * std::sin(phasor() * TwoPi);
+      // Decrement sample
+      amountsToPlay.begin()->second--;
+      // If entire note duration has been played,
+      if (amountsToPlay.begin()->second == 0) {
+        // Remove that note and move on to next
+        amountsToPlay.removeAndReturn(0);
+        // Change phaseDelta to match new note
+        if (amountsToPlay.isEmpty()) {
+          DBG("ran out");
+          return;
+        }
+        currentFreq = midiToFreqTable[amountsToPlay.begin()->first];
+        phaseDelta = currentFreq / srate;
+      }
     }
   }
 }
@@ -387,6 +404,8 @@ juce::Array<std::pair<double, int>> MainComponent::generateRandomAmounts(
                                                       double range,
                                                       int length) {
   juce::Array<std::pair<double, int>> arr;
+  maxAmount = DBL_MIN;
+  minAmount = DBL_MAX;
   int noteDurationInSamples = std::ceil(srate / (playbackBpm / 60.0));
   for (int i = 0; i < length; i++) {
     double a = random.nextDouble() * range;
@@ -394,8 +413,10 @@ juce::Array<std::pair<double, int>> MainComponent::generateRandomAmounts(
     double c = random.nextDouble() * (range / 4);
     double d = random.nextDouble() * 2 - 1;
     double x = (end - start) * (i / length);
+
     double amount = generateRandomAmount(a, b, c, d, x);
-    DBG(amount);
+    if (amount < minAmount) minAmount = amount;
+    if (amount > maxAmount) maxAmount = amount;
     arr.add({amount, noteDurationInSamples});
   }
   return arr;
@@ -404,4 +425,27 @@ juce::Array<std::pair<double, int>> MainComponent::generateRandomAmounts(
 double MainComponent::generateRandomAmount(double a, double b, double c,
     double d, double x) {
   return a * cos(b * x) + c * sin(d * x) + a + c;
+}
+
+double MainComponent::mapAmount(double low1, double high1, double low2, double high2, double amount) {
+  auto range1 = high1 - low1;
+  auto range2 = high2 - low2;
+
+  auto pointPosition = amount - low1;
+  auto ratio = pointPosition / range1;
+
+  return low2 + range2 * ratio;
+}
+
+void MainComponent::convertAmountsToNotes(
+    juce::Array<std::pair<double, int>>& amounts) {
+  for (auto& amountDurationPair : amounts) {
+    double amount = amountDurationPair.first;
+    // TODO: quantize note depending on scale
+    // TODO: if using frequencies, change min/max midi pitch
+    // to min/max frequency
+    double note =
+        mapAmount(minAmount, maxAmount, minMidiPitch, maxMidiPitch, amount);
+    amountDurationPair.first = note;
+  }
 }

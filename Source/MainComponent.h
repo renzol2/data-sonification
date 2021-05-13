@@ -50,7 +50,10 @@ class MainComponent : public juce::AudioAppComponent,
                                                             double end,
                                                             double range,
                                                             int length);
+  void convertAmountsToNotes(juce::Array<std::pair<double, int>>& amounts);
   double generateRandomAmount(double a, double b, double c, double d, double x);
+  double mapAmount(double low1, double high1, double low2, double high2,
+                   double amount);
 
  private:
   //==============================================================================
@@ -76,6 +79,8 @@ class MainComponent : public juce::AudioAppComponent,
   int time;
   int leftoverSamplesToPlay = 0;
   juce::Array<std::pair<double, int>> amountsToPlay;
+  double maxAmount = DBL_MIN;
+  double minAmount = DBL_MAX;
 
   Random random;
 
