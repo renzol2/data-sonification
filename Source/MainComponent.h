@@ -43,6 +43,8 @@ class MainComponent : public juce::AudioAppComponent,
   float inline getRandomSample(float amp);
   int convertFreqToMidi(double freq);
   double convertMidiToFreq(int midi);
+  juce::Array<double> generateRandomAmounts(double start, double end, double range, int length);
+  double generateRandomAmount(double a, double b, double c, double d, double x);
 
  private:
   //==============================================================================
@@ -65,6 +67,9 @@ class MainComponent : public juce::AudioAppComponent,
   double currentFreq = 0.0;
   const double TwoPi{double_Pi * 2.0};
   juce::Array<double> midiToFreqTable;
+  int time;
+  int leftoverSamplesToPlay = 0;
+  juce::Array<double> amountsToPlay;
 
   Random random;
 

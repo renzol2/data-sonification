@@ -116,6 +116,7 @@ void MainComponent::prepareToPlay(int samplesPerBlockExpected,
   srate = sampleRate;
   phase = 0;
   phaseDelta = currentFreq / srate;
+  time = 0;
 }
 
 void MainComponent::getNextAudioBlock(
@@ -127,6 +128,17 @@ void MainComponent::getNextAudioBlock(
   // Right now we are not producing any data, in which case we need to clear the
   // buffer (to prevent the output of random noise)
   bufferToFill.clearActiveBufferRegion();
+
+  if (!isPlaying()) return;
+
+  // If we've run out of notes, we can stop playing
+  if (amountsToPlay.isEmpty()) {
+    audioSourcePlayer.setSource(nullptr);
+  }
+
+  // Find note duration, in samples
+  double beatsPerSecond = playbackBpm / 60.0;
+  double noteDurationInSamples = srate / beatsPerSecond;
 
   switch (oscillatorId) {
     case kSine:
@@ -224,7 +236,9 @@ void MainComponent::comboBoxChanged(ComboBox* menu) {
   if (menu == &oscillatorMenu) {
     auto nextOsc = OscillatorId(kNoOscilator + index + 1);
     oscillatorId = nextOsc;
-    if (oscillatorId != kNoOscilator) playButton.setEnabled(true);
+    if (oscillatorId != kNoOscilator) {
+      playButton.setEnabled(true);
+    }
   } else if (menu == &scaleMenu) {
     auto nextScale = ScaleId(kNoScale + index + 1);
     scaleId = nextScale;
@@ -237,9 +251,11 @@ void MainComponent::buttonClicked(Button* button) {
     if (isPlaying()) {
       audioSourcePlayer.setSource(nullptr);
       drawPlayButton(playButton, true);
+      amountsToPlay.clear();
     } else {
       audioSourcePlayer.setSource(this);
       drawPlayButton(playButton, false);
+      amountsToPlay = generateRandomAmounts(0, 50, 100, 25);
     }
   }
 }
@@ -360,4 +376,25 @@ double MainComponent::convertMidiToFreq(int midi) {
   // Taken from: https://www.music.mcgill.ca/~gary/307/week1/node28.html
   double freq = 440.0 * std::pow(2, (double)(midi - 69) / 12.0);
   return freq;
+}
+
+juce::Array<double> MainComponent::generateRandomAmounts(double start, double end,
+                                                      double range,
+                                                      int length) {
+  juce::Array<double> arr;
+  for (int i = 0; i < length; i++) {
+    double a = random.nextDouble() * range;
+    double b = random.nextDouble() * 2 - 1;
+    double c = random.nextDouble() * (range / 4);
+    double d = random.nextDouble() * 2 - 1;
+    double x = (end - start) * (i / length);
+    double amount = generateRandomAmount(a, b, c, d, x);
+    arr.add(amount);
+  }
+  return arr;
+}
+
+double MainComponent::generateRandomAmount(double a, double b, double c,
+    double d, double x) {
+  return a * cos(b * x) + c * sin(d * x) + a + c;
 }
