@@ -2,7 +2,9 @@
 
 //==============================================================================
 MainComponent::MainComponent() {
+  // Make all child components visible
   addAndMakeVisible(playButton);
+  addAndMakeVisible(playLabel);
 
   addAndMakeVisible(dataMenu);
   addAndMakeVisible(dataLabel);
@@ -27,6 +29,37 @@ MainComponent::MainComponent() {
   
   addAndMakeVisible(minMaxUnitButton);
 
+  // Add listeners to child components
+  dataMenu.addListener(this);
+  oscillatorMenu.addListener(this);
+  scaleMenu.addListener(this);
+  levelSlider.addListener(this);
+  minPitchSlider.addListener(this);
+  maxPitchSlider.addListener(this);
+  playbackBpmSlider.addListener(this);
+
+  // Add items to combo box components
+  oscillatorMenu.addItemList({"Sine", "Square", "Triangle", "Saw"}, kSine);
+  scaleMenu.addItemList(
+      {"Frequency", "Chromatic", "Diatonic", "Pentatonic", "Whole Tone"}, kFrequency);
+
+  // Initialize level slider
+  levelSlider.setRange(kMinLevel, kMaxLevel);
+  levelSlider.setSliderStyle(Slider::LinearHorizontal);
+  levelSlider.setTextBoxStyle(Slider::TextBoxLeft, false, 90, 22);
+
+  // Initialize minimum pitch slider
+  minPitchSlider.setRange(kMinMidiPitch, kMaxMidiPitch);
+  minPitchSlider.setSliderStyle(Slider::SliderStyle::LinearHorizontal);
+
+  // Initialize maximum pitch slider
+  maxPitchSlider.setRange(kMinMidiPitch, kMaxMidiPitch);
+  maxPitchSlider.setSliderStyle(Slider::SliderStyle::LinearHorizontal);
+
+  // Initialize BPM slider
+  playbackBpmSlider.setRange(kMinBpm, kMaxBpm);
+  playbackBpmSlider.setSliderStyle(Slider::SliderStyle::LinearHorizontal);
+
   // Make sure you set the size of the component after
   // you add any child components.
   setSize(800, 600);
@@ -44,6 +77,8 @@ MainComponent::MainComponent() {
     // Specify the number of input and output channels that we want to open
     setAudioChannels(2, 2);
   }
+
+  audioSourcePlayer.setSource(nullptr);
 }
 
 MainComponent::~MainComponent() {
@@ -92,20 +127,18 @@ void MainComponent::paint(juce::Graphics& g) {
 }
 
 void MainComponent::resized() {
-  
   const int COL_HEIGHT = 30;
   const int PADDING = 8;
   const int SLIGHT_PADDING = 4;
   const int MENU_WIDTH = 118;
   const int LABEL_WIDTH = 65;
   const int SLIDER_WIDTH = 338;
-  const int CPU_USAGE_WIDTH = 66;
-  const int CPU_LABEL_WIDTH = 36;
 
   auto componentBounds = getLocalBounds();
   componentBounds.reduce(PADDING, PADDING);
 
   auto firstRow = componentBounds.removeFromTop(COL_HEIGHT);
+  playLabel.setBounds(firstRow.removeFromLeft(LABEL_WIDTH));
   playButton.setBounds(firstRow.removeFromLeft(COL_HEIGHT));
   levelSlider.setBounds(firstRow.removeFromRight(SLIDER_WIDTH));
   levelLabel.setBounds(firstRow.removeFromRight(LABEL_WIDTH));
@@ -131,3 +164,7 @@ void MainComponent::resized() {
   maxPitchLabel.setBounds(bottomRow.removeFromRight(LABEL_WIDTH));
 
 }
+
+void MainComponent::sliderValueChanged(Slider* slider) {}
+
+void MainComponent::comboBoxChanged(ComboBox* menu) {}
