@@ -1,7 +1,7 @@
 #include "MainComponent.h"
 
 //==============================================================================
-MainComponent::MainComponent() {
+MainComponent::MainComponent() : Thread("COVID-19 Data Sonification") {
   // Make all child components visible
   addAndMakeVisible(playButton);
   addAndMakeVisible(playLabel);
@@ -94,6 +94,11 @@ MainComponent::MainComponent() {
   }
 
   audioSourcePlayer.setSource(nullptr);
+
+  // Disable data menu until data is fetched
+  dataMenu.setEnabled(false);
+  startThread();
+  
   setVisible(true);
 }
 
@@ -288,6 +293,7 @@ void MainComponent::comboBoxChanged(ComboBox* menu) {
     auto nextScale = ScaleId(kNoScale + index + 1);
     scaleId = nextScale;
   } else if (menu == &dataMenu) {
+    selectedRegionIndex = index;
   }
 }
 
@@ -299,7 +305,7 @@ void MainComponent::buttonClicked(Button* button) {
       notesToPlay.clear();
     } else {
       // Generate notes to play
-      amountsToPlay = generateRandomAmounts(0, 0.1, 10, 150);
+      amountsToPlay = getRegionAmounts();
       notesToPlay = convertAmountsToNotes(amountsToPlay);
       currentAmountIndex = 0;
 
@@ -320,6 +326,56 @@ void MainComponent::buttonClicked(Button* button) {
       audioSourcePlayer.setSource(this);
     }
   }
+}
+
+void MainComponent::run() {
+  juce::String url =
+      "https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/"
+      "jhu/new_cases.csv";
+  auto result = getResultText(url);
+
+  MessageManagerLock mml(this);
+
+  if (mml.lockWasGained()) {
+    // Parse all raw data
+    std::istringstream lineStream(result.toStdString());
+    std::string lineToken;
+    while (std::getline(lineStream, lineToken, '\n')) {
+      std::istringstream commaStream(lineToken);
+      std::string commaToken;
+      std::vector<std::string> strArr;
+      while (std::getline(commaStream, commaToken, ',')) {
+        strArr.push_back(commaToken);
+      }
+      rawData.push_back(strArr);
+    }
+
+    // Populate names
+    std::vector<std::string> names = rawData[0];
+    for (int i = 1; i < names.size(); i++) {
+      dataMenu.addItem(juce::String(names[i]), i);
+      regionNames.push_back(names[i]);
+    }
+
+    repaint();
+  }
+}
+
+String MainComponent::getResultText(const URL& url) {
+  StringPairArray responseHeaders;
+  int statusCode = 0;
+
+  if (auto stream = std::unique_ptr<InputStream>(
+          url.createInputStream(false, nullptr, nullptr, {},
+                                10000,  // timeout in millisecs
+                                &responseHeaders, &statusCode))) {
+    return stream->readEntireStreamAsString();
+  }
+
+  if (statusCode != 0)
+    return "Failed to connect, status code = " + String(statusCode);
+
+  return "Failed to connect!";
 }
 
 bool MainComponent::isPlaying() {
@@ -560,4 +616,27 @@ int MainComponent::quantizeNote(double amount) {
   }
 
   return note;
+}
+
+juce::Array<double> MainComponent::getRegionAmounts() {
+  juce::Array<double> arr;
+  maxAmount = DBL_MIN;
+  minAmount = DBL_MAX;
+
+  for (int i = 1; i < rawData.size(); i++) {
+    std::string data = rawData[i][selectedRegionIndex + 1];
+    if (data.empty()) {
+      minAmount = 0.0;
+      arr.add(0.0);
+    } else {
+      double parsedData = std::stod(data);
+
+      if (parsedData < minAmount) minAmount = parsedData;
+      if (parsedData > maxAmount) maxAmount = parsedData;
+
+      DBG(juce::String(parsedData));
+      arr.add(parsedData);
+    }
+  }
+  return arr;
 }

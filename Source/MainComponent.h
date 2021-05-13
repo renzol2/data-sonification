@@ -10,7 +10,8 @@
 class MainComponent : public juce::AudioAppComponent,
                       public juce::ComboBox::Listener,
                       public juce::Slider::Listener,
-                      public juce::Button::Listener {
+                      public juce::Button::Listener,
+                      private juce::Thread {
  public:
   //==============================================================================
   MainComponent();
@@ -25,6 +26,7 @@ class MainComponent : public juce::AudioAppComponent,
   //==============================================================================
   void paint(juce::Graphics& g) override;
   void resized() override;
+  void run() override;
 
   //==============================================================================
   void sliderValueChanged(Slider* slider) override;
@@ -59,6 +61,8 @@ class MainComponent : public juce::AudioAppComponent,
   double mapAmount(double low1, double high1, double low2, double high2,
                    double amount);
   int quantizeNote(double amount);
+  juce::String getResultText(const URL& url);
+  juce::Array<double> getRegionAmounts();
 
  private:
   //==============================================================================
@@ -95,6 +99,7 @@ class MainComponent : public juce::AudioAppComponent,
   ComboBox dataMenu;
   Label dataLabel{"dataLabel", "Data: "};
   // TODO: add variable for currently selected data
+  
 
   ComboBox oscillatorMenu;
   Label oscillatorLabel{"oscillatorLabel", "Oscillator: "};
@@ -131,9 +136,10 @@ class MainComponent : public juce::AudioAppComponent,
   int playbackBpm = 200;
 
   ToggleButton minMaxUnitButton{"Use MIDI pitch"};
-  bool useMidi = false;
-
-  // TODO: figure out how to make graph
+  
+  std::vector<std::vector<std::string>> rawData;
+  std::vector<std::string> regionNames;
+  int selectedRegionIndex = 0;
 
   Font textFont{"Arial", 15.0f, Font::FontStyleFlags::plain};
 
