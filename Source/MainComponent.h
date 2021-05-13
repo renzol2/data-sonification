@@ -97,10 +97,10 @@ class MainComponent : public juce::AudioAppComponent,
   Label playLabel{"playLabel", "Play data"};
 
   ComboBox dataMenu;
-  Label dataLabel{"dataLabel", "Data: "};
-  // TODO: add variable for currently selected data
+  Label dataLabel{"dataLabel", "New daily cases for: "};
+  Label dateLabel{"dateLabel", ""};
+  Label casesLabel{"casesLabel", ""};
   
-
   ComboBox oscillatorMenu;
   Label oscillatorLabel{"oscillatorLabel", "Oscillator: "};
   OscillatorId oscillatorId{kNoOscilator};

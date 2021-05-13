@@ -8,6 +8,8 @@ MainComponent::MainComponent() : Thread("COVID-19 Data Sonification") {
 
   addAndMakeVisible(dataMenu);
   addAndMakeVisible(dataLabel);
+  addAndMakeVisible(dateLabel);
+  addAndMakeVisible(casesLabel);
 
   addAndMakeVisible(oscillatorMenu);
   addAndMakeVisible(oscillatorLabel);
@@ -183,6 +185,9 @@ void MainComponent::paint(juce::Graphics& g) {
     oscillatorMenu.setEnabled(true);
     dataMenu.setEnabled(true);
     scaleMenu.setEnabled(true);
+    
+    dateLabel.setText("", juce::NotificationType::dontSendNotification);
+    casesLabel.setText("", juce::NotificationType::dontSendNotification);
   } else {
     drawPlayButton(playButton, false);
 
@@ -209,6 +214,11 @@ void MainComponent::paint(juce::Graphics& g) {
       if (i == currentAmountIndex) {
         pointLength = 7.0f;
         g.setColour(juce::Colours::orange);
+        // Set date label
+        dateLabel.setText(juce::String(rawData[i][0]),
+                          juce::NotificationType::dontSendNotification);
+        casesLabel.setText(juce::String(amount) + " cases",
+                           juce::NotificationType::dontSendNotification);
       } else {
         pointLength = 5.0f;
         g.setColour(getLookAndFeel().findColour(Slider::thumbColourId));
@@ -217,8 +227,9 @@ void MainComponent::paint(juce::Graphics& g) {
       Rectangle<int> graphPointArea(pointLength, pointLength);
       graphPointArea.setCentre(graphPoint);
       g.fillEllipse(graphPointArea.toFloat());
-    }
 
+    }
+    
     repaint();  // FIXME: naive way of showing graph
   }
 }
@@ -245,8 +256,13 @@ void MainComponent::resized() {
       PADDING);  // padding between first and second row
 
   auto secondRow = componentBounds.removeFromTop(COL_HEIGHT);
-  dataLabel.setBounds(secondRow.removeFromLeft(LABEL_WIDTH));
+  dataLabel.setBounds(secondRow.removeFromLeft(LABEL_WIDTH * 2));
   dataMenu.setBounds(secondRow.removeFromLeft(MENU_WIDTH));
+
+  auto dataLabelBounds = secondRow.removeFromLeft(LABEL_WIDTH * 2);
+  dateLabel.setBounds(dataLabelBounds);
+  dataLabelBounds.translate(0, COL_HEIGHT + PADDING);
+  casesLabel.setBounds(dataLabelBounds);
   playbackBpmSlider.setBounds(secondRow.removeFromRight(SLIDER_WIDTH));
   playbackBpmLabel.setBounds(secondRow.removeFromRight(LABEL_WIDTH));
 
@@ -602,7 +618,6 @@ int MainComponent::quantizeNote(double amount) {
   }
 
   while (!isQuantized) {
-    // TODO: quantize note
     int currentPitchClass = note % kNumPitchClasses;
     for (int pitchClass : *currentScale) {
       if (currentPitchClass == pitchClass) {
@@ -634,7 +649,6 @@ juce::Array<double> MainComponent::getRegionAmounts() {
       if (parsedData < minAmount) minAmount = parsedData;
       if (parsedData > maxAmount) maxAmount = parsedData;
 
-      DBG(juce::String(parsedData));
       arr.add(parsedData);
     }
   }
