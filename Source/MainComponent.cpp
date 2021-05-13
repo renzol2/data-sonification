@@ -30,6 +30,7 @@ MainComponent::MainComponent() {
   addAndMakeVisible(minMaxUnitButton);
 
   // Add listeners to child components
+  playButton.addListener(this);
   dataMenu.addListener(this);
   oscillatorMenu.addListener(this);
   scaleMenu.addListener(this);
@@ -64,6 +65,10 @@ MainComponent::MainComponent() {
   playbackBpmSlider.setRange(kMinBpm, kMaxBpm);
   playbackBpmSlider.setSliderStyle(Slider::SliderStyle::LinearHorizontal);
   playbackBpmSlider.setValue(playbackBpm);
+
+  // Initialize play button
+  playButton.setEnabled(false);
+  drawPlayButton(playButton, true);
 
   // Make sure you set the size of the component after
   // you add any child components.
@@ -191,10 +196,70 @@ void MainComponent::comboBoxChanged(ComboBox* menu) {
     auto nextOsc = OscillatorId(kNoOscilator + index + 1);
     DBG(juce::String(nextOsc));
     oscillatorId = nextOsc;
+    if (oscillatorId != kNoOscilator) playButton.setEnabled(true);
   } else if (menu == &scaleMenu) {
     auto nextScale = ScaleId(kNoScale + index + 1);
     DBG(juce::String(nextScale));
     scaleId = nextScale;
   } else if (menu == &dataMenu) {
   }
+}
+
+void MainComponent::buttonClicked(Button* button) {
+  if (button == &playButton) {
+    if (isPlaying()) {
+      audioSourcePlayer.setSource(nullptr);
+      drawPlayButton(playButton, true);
+    } else {
+      audioSourcePlayer.setSource(this);
+      drawPlayButton(playButton, false);
+    }
+  }
+}
+
+bool MainComponent::isPlaying() {
+  return audioSourcePlayer.getCurrentSource() != nullptr;
+}
+
+void MainComponent::drawPlayButton(juce::DrawableButton& button,
+                                   bool showPlay) {
+  juce::Path path;
+  if (showPlay) {
+    // draw the triangle
+    path.addTriangle({0, 0}, {0, 100}, {100, 50});
+  } else {
+    // draw the two bars
+    int width = 42;
+    path.addRectangle(0, 100, width, 100);
+    path.addRectangle(100 - width, 100, width, 100);
+  }
+  juce::DrawablePath drawable;
+  drawable.setPath(path);
+  juce::FillType fill(Colours::white);
+  drawable.setFill(fill);
+  button.setImages(&drawable);
+}
+
+double MainComponent::phasor() {
+  double p = phase;
+  phase = std::fmod(phase + phaseDelta, 1.0);
+  return p;
+}
+
+void MainComponent::generateSine(const AudioSourceChannelInfo& bufferToFill) {}
+
+void MainComponent::generateSquare(const AudioSourceChannelInfo& bufferToFill) {
+}
+
+void MainComponent::generateTriangle(
+    const AudioSourceChannelInfo& bufferToFill) {}
+
+void MainComponent::generateSaw(const AudioSourceChannelInfo& bufferToFill) {}
+
+float MainComponent::getRandomSample() {
+  return random.nextFloat() * 2.0f - 1.0f;
+}
+
+float MainComponent::getRandomSample(float amp) {
+  return getRandomSample() * amp;
 }

@@ -9,7 +9,8 @@
 */
 class MainComponent : public juce::AudioAppComponent,
                       public juce::ComboBox::Listener,
-                      public juce::Slider::Listener {
+                      public juce::Slider::Listener,
+                      public juce::Button::Listener {
  public:
   //==============================================================================
   MainComponent();
@@ -28,6 +29,18 @@ class MainComponent : public juce::AudioAppComponent,
   //==============================================================================
   void sliderValueChanged(Slider* slider) override;
   void comboBoxChanged(ComboBox* menu) override;
+  void buttonClicked(Button* button) override;
+
+  //==============================================================================
+  bool isPlaying();
+  void drawPlayButton(juce::DrawableButton& b, bool drawPlay);
+  double inline phasor();
+  void inline generateSine(const AudioSourceChannelInfo& bufferToFill);
+  void inline generateSquare(const AudioSourceChannelInfo& bufferToFill);
+  void inline generateTriangle(const AudioSourceChannelInfo& bufferToFill);
+  void inline generateSaw(const AudioSourceChannelInfo& bufferToFill);
+  float inline getRandomSample();
+  float inline getRandomSample(float amp);
 
  private:
   //==============================================================================
@@ -44,6 +57,12 @@ class MainComponent : public juce::AudioAppComponent,
   };
 
   AudioSourcePlayer audioSourcePlayer;
+  double phase = 0.0;
+  double srate = 0.0;
+  double phaseDelta = 0.0;
+  double currentFreq = 0.0;
+
+  Random random;
 
   DrawableButton playButton{"", juce::DrawableButton::ImageOnButtonBackground};
   Label playLabel{"playLabel", "Play data"};
