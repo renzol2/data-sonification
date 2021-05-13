@@ -35,15 +35,21 @@ class MainComponent : public juce::AudioAppComponent,
   bool isPlaying();
   void drawPlayButton(juce::DrawableButton& b, bool drawPlay);
   double inline phasor();
-  void inline generateSine(const AudioSourceChannelInfo& bufferToFill);
-  void inline generateSquare(const AudioSourceChannelInfo& bufferToFill);
-  void inline generateTriangle(const AudioSourceChannelInfo& bufferToFill);
-  void inline generateSaw(const AudioSourceChannelInfo& bufferToFill);
+  void inline generateSine(const AudioSourceChannelInfo& bufferToFill, int noteDuration);
+  void inline generateSquare(const AudioSourceChannelInfo& bufferToFill,
+                             int noteDuration);
+  void inline generateTriangle(const AudioSourceChannelInfo& bufferToFill,
+                               int noteDuration);
+  void inline generateSaw(const AudioSourceChannelInfo& bufferToFill,
+                          int noteDuration);
   float inline getRandomSample();
   float inline getRandomSample(float amp);
   int convertFreqToMidi(double freq);
   double convertMidiToFreq(int midi);
-  juce::Array<double> generateRandomAmounts(double start, double end, double range, int length);
+  juce::Array<std::pair<double, int>> generateRandomAmounts(double start,
+                                                            double end,
+                                                            double range,
+                                                            int length);
   double generateRandomAmount(double a, double b, double c, double d, double x);
 
  private:
@@ -69,7 +75,7 @@ class MainComponent : public juce::AudioAppComponent,
   juce::Array<double> midiToFreqTable;
   int time;
   int leftoverSamplesToPlay = 0;
-  juce::Array<double> amountsToPlay;
+  juce::Array<std::pair<double, int>> amountsToPlay;
 
   Random random;
 

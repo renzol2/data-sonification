@@ -134,24 +134,25 @@ void MainComponent::getNextAudioBlock(
   // If we've run out of notes, we can stop playing
   if (amountsToPlay.isEmpty()) {
     audioSourcePlayer.setSource(nullptr);
+    return;
   }
 
   // Find note duration, in samples
   double beatsPerSecond = playbackBpm / 60.0;
-  double noteDurationInSamples = srate / beatsPerSecond;
+  int noteDurationInSamples = std::ceil(srate / beatsPerSecond);
 
   switch (oscillatorId) {
     case kSine:
-      generateSine(bufferToFill);
+      generateSine(bufferToFill, noteDurationInSamples);
       break;
     case kSquare:
-      generateSquare(bufferToFill);
+      generateSquare(bufferToFill, noteDurationInSamples);
       break;
     case kTriangle:
-      generateTriangle(bufferToFill);
+      generateTriangle(bufferToFill, noteDurationInSamples);
       break;
     case kSaw:
-      generateSaw(bufferToFill);
+      generateSaw(bufferToFill, noteDurationInSamples);
       break;
     case kNoOscilator:
       break;
@@ -255,7 +256,7 @@ void MainComponent::buttonClicked(Button* button) {
     } else {
       audioSourcePlayer.setSource(this);
       drawPlayButton(playButton, false);
-      amountsToPlay = generateRandomAmounts(0, 50, 100, 25);
+      amountsToPlay = generateRandomAmounts(0, 0.5, 100, 25);
     }
   }
 }
@@ -289,7 +290,8 @@ double MainComponent::phasor() {
   return p;
 }
 
-void MainComponent::generateSine(const AudioSourceChannelInfo& bufferToFill) {
+void MainComponent::generateSine(const AudioSourceChannelInfo& bufferToFill,
+                                 int noteDuration) {
   double startingPhase = phase;
   for (int channel = 0; channel < bufferToFill.buffer->getNumChannels();
        channel++) {
@@ -303,7 +305,8 @@ void MainComponent::generateSine(const AudioSourceChannelInfo& bufferToFill) {
   }
 }
 
-void MainComponent::generateSquare(const AudioSourceChannelInfo& bufferToFill) {
+void MainComponent::generateSquare(const AudioSourceChannelInfo& bufferToFill,
+                                   int noteDuration) {
   double startingPhase = phase;
   for (int channel = 0; channel < bufferToFill.buffer->getNumChannels();
        channel++) {
@@ -322,8 +325,8 @@ void MainComponent::generateSquare(const AudioSourceChannelInfo& bufferToFill) {
   }
 }
 
-void MainComponent::generateTriangle(
-    const AudioSourceChannelInfo& bufferToFill) {
+void MainComponent::generateTriangle(const AudioSourceChannelInfo& bufferToFill,
+                                     int noteDuration) {
   double startingPhase = phase;
   for (int channel = 0; channel < bufferToFill.buffer->getNumChannels();
        channel++) {
@@ -344,7 +347,8 @@ void MainComponent::generateTriangle(
   }
 }
 
-void MainComponent::generateSaw(const AudioSourceChannelInfo& bufferToFill) {
+void MainComponent::generateSaw(const AudioSourceChannelInfo& bufferToFill,
+                                int noteDuration) {
   double startingPhase = phase;
   for (int channel = 0; channel < bufferToFill.buffer->getNumChannels();
        channel++) {
@@ -378,10 +382,12 @@ double MainComponent::convertMidiToFreq(int midi) {
   return freq;
 }
 
-juce::Array<double> MainComponent::generateRandomAmounts(double start, double end,
+juce::Array<std::pair<double, int>> MainComponent::generateRandomAmounts(
+    double start, double end,
                                                       double range,
                                                       int length) {
-  juce::Array<double> arr;
+  juce::Array<std::pair<double, int>> arr;
+  int noteDurationInSamples = std::ceil(srate / (playbackBpm / 60.0));
   for (int i = 0; i < length; i++) {
     double a = random.nextDouble() * range;
     double b = random.nextDouble() * 2 - 1;
@@ -389,7 +395,8 @@ juce::Array<double> MainComponent::generateRandomAmounts(double start, double en
     double d = random.nextDouble() * 2 - 1;
     double x = (end - start) * (i / length);
     double amount = generateRandomAmount(a, b, c, d, x);
-    arr.add(amount);
+    DBG(amount);
+    arr.add({amount, noteDurationInSamples});
   }
   return arr;
 }
