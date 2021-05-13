@@ -183,6 +183,9 @@ void MainComponent::paint(juce::Graphics& g) {
     minPitchSlider.setEnabled(true);
     maxPitchSlider.setEnabled(true);
     playbackBpmSlider.setEnabled(true);
+    oscillatorMenu.setEnabled(true);
+    dataMenu.setEnabled(true);
+    scaleMenu.setEnabled(true);
   } else {
     drawPlayButton(playButton, false);
   }
@@ -271,11 +274,14 @@ void MainComponent::buttonClicked(Button* button) {
       currentFreq = midiToFreqTable[amountsToPlay.begin()->first];
       phaseDelta = currentFreq / srate;
 
-      // Disable sliders
+      // Disable sliders and menus
       levelSlider.setEnabled(false);
       minPitchSlider.setEnabled(false);
       maxPitchSlider.setEnabled(false);
       playbackBpmSlider.setEnabled(false);
+      oscillatorMenu.setEnabled(false);
+      dataMenu.setEnabled(false);
+      scaleMenu.setEnabled(false);
 
       // Generate audio
       audioSourcePlayer.setSource(this);
