@@ -176,6 +176,13 @@ void MainComponent::paint(juce::Graphics& g) {
   // You can add your drawing code here!
   if (!isPlaying()) {
     drawPlayButton(playButton, true);
+
+    // Enable sliders when not playing
+    // FIXME: is there a way to do this without checking every frame?
+    levelSlider.setEnabled(true);
+    minPitchSlider.setEnabled(true);
+    maxPitchSlider.setEnabled(true);
+    playbackBpmSlider.setEnabled(true);
   } else {
     drawPlayButton(playButton, false);
   }
@@ -252,14 +259,26 @@ void MainComponent::comboBoxChanged(ComboBox* menu) {
 void MainComponent::buttonClicked(Button* button) {
   if (button == &playButton) {
     if (isPlaying()) {
+      // Stop playback
       audioSourcePlayer.setSource(nullptr);
       amountsToPlay.clear();
     } else {
-      audioSourcePlayer.setSource(this);
+      // Generate notes to play
       amountsToPlay = generateRandomAmounts(0, 0.5, 100, 25);
       convertAmountsToNotes(amountsToPlay);
+
+      // Set frequency
       currentFreq = midiToFreqTable[amountsToPlay.begin()->first];
       phaseDelta = currentFreq / srate;
+
+      // Disable sliders
+      levelSlider.setEnabled(false);
+      minPitchSlider.setEnabled(false);
+      maxPitchSlider.setEnabled(false);
+      playbackBpmSlider.setEnabled(false);
+
+      // Generate audio
+      audioSourcePlayer.setSource(this);
     }
   }
 }
@@ -312,7 +331,6 @@ void MainComponent::generateSine(const AudioSourceChannelInfo& bufferToFill,
         amountsToPlay.removeAndReturn(0);
         // Change phaseDelta to match new note
         if (amountsToPlay.isEmpty()) {
-          DBG("ran out");
           return;
         }
         currentFreq = midiToFreqTable[amountsToPlay.begin()->first];
