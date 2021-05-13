@@ -116,7 +116,6 @@ void MainComponent::prepareToPlay(int samplesPerBlockExpected,
   srate = sampleRate;
   phase = 0;
   phaseDelta = currentFreq / srate;
-  time = 0;
 }
 
 void MainComponent::getNextAudioBlock(
@@ -267,7 +266,7 @@ void MainComponent::buttonClicked(Button* button) {
       amountsToPlay.clear();
     } else {
       // Generate notes to play
-      amountsToPlay = generateRandomAmounts(0, 0.5, 100, 25);
+      amountsToPlay = generateRandomAmounts(0, 0.5, 100, 50);
       convertAmountsToNotes(amountsToPlay);
 
       // Set frequency
@@ -482,7 +481,44 @@ void MainComponent::convertAmountsToNotes(
     // to min/max frequency
     double note =
         mapAmount(minAmount, maxAmount, minMidiPitch, maxMidiPitch, amount);
-    amountDurationPair.first = note;
+    double quantizedNote = quantizeNote(note);
+    amountDurationPair.first = quantizedNote;
   }
+}
+
+int MainComponent::quantizeNote(double amount) { 
+  bool isQuantized = false;
+  int note = static_cast<int>(amount);
+
+  const juce::Array<int>* currentScale;
+  switch (scaleId) { 
+    case kDiatonic:
+      currentScale = &kDiatonicPitches;
+      break;
+    case kPentatonic:
+      currentScale = &kPentatonicPitches;
+      break;
+    case kWholeTone:
+      currentScale = &kWholeTonePitches;
+      break;
+    default:
+      return note;
+  }
+
+  while (!isQuantized) {
+    // TODO: quantize note
+    int currentPitchClass = note % kNumPitchClasses;
+    for (int pitchClass : *currentScale) {
+      if (currentPitchClass == pitchClass) {
+        isQuantized = true;
+        break;
+      }
+    }
+    if (!isQuantized) {
+      note--;
+    }
+  }
+
+  return note;
 }
 

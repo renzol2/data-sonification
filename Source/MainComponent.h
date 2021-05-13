@@ -58,6 +58,8 @@ class MainComponent : public juce::AudioAppComponent,
   double generateRandomAmount(double a, double b, double c, double d, double x);
   double mapAmount(double low1, double high1, double low2, double high2,
                    double amount);
+  int quantizeNote(double amount);
+
 
  private:
   //==============================================================================
@@ -73,6 +75,11 @@ class MainComponent : public juce::AudioAppComponent,
     kWholeTone
   };
 
+  const juce::Array<int> kDiatonicPitches{0, 2, 4, 5, 7, 9, 11};
+  const juce::Array<int> kPentatonicPitches{0, 2, 4, 7, 9};
+  const juce::Array<int> kWholeTonePitches{0, 2, 4, 6, 8, 10};
+  const int kNumPitchClasses = 12;
+
   AudioSourcePlayer audioSourcePlayer;
   double phase = 0.0;
   double srate = 0.0;
@@ -80,8 +87,6 @@ class MainComponent : public juce::AudioAppComponent,
   double currentFreq = 0.0;
   const double TwoPi{double_Pi * 2.0};
   juce::Array<double> midiToFreqTable;
-  int time;
-  int leftoverSamplesToPlay = 0;
   juce::Array<std::pair<double, int>> amountsToPlay;
   double maxAmount = DBL_MIN;
   double minAmount = DBL_MAX;
