@@ -124,7 +124,7 @@ void MainComponent::getNextAudioBlock(
   if (!isPlaying()) return;
 
   // If we've run out of notes, we can stop playing
-  if (amountsToPlay.isEmpty()) {
+  if (notesToPlay.isEmpty()) {
     audioSourcePlayer.setSource(nullptr);
     return;
   }
@@ -180,8 +180,40 @@ void MainComponent::paint(juce::Graphics& g) {
     scaleMenu.setEnabled(true);
   } else {
     drawPlayButton(playButton, false);
-    g.setColour(juce::Colours::rebeccapurple);
-    g.drawEllipse(graphArea.toFloat(), 2.0f);
+
+    auto graphBackground = graphArea;
+    graphBackground.expand(graphArea.getWidth() * 0.1,
+                           graphArea.getHeight() * 0.1);
+    g.setColour(juce::Colours::darkgrey);
+    g.fillRect(graphBackground);
+
+    // Draw entire graph
+    for (int i = 0; i < amountsToPlay.size(); i++) {
+      double amount = amountsToPlay[i];
+
+      double widthRatio = (double)(i) / (double)amountsToPlay.size();
+      int xCoord = graphArea.getX() + graphArea.getWidth() * widthRatio;
+
+      double heightRatio = (amount - minAmount) / (maxAmount - minAmount);
+      int yCoord = graphArea.getY() + graphArea.getHeight() -
+                   graphArea.getHeight() * heightRatio;
+
+      Point<int> graphPoint(xCoord, yCoord);
+      float pointLength;
+
+      if (i == currentAmountIndex) {
+        pointLength = 7.0f;
+        g.setColour(juce::Colours::orange);
+      } else {
+        pointLength = 5.0f;
+        g.setColour(getLookAndFeel().findColour(Slider::thumbColourId));
+      }
+
+      Rectangle<int> graphPointArea(pointLength, pointLength);
+      graphPointArea.setCentre(graphPoint);
+      g.fillEllipse(graphPointArea.toFloat());
+    }
+
     repaint();  // FIXME: naive way of showing graph
   }
 }
@@ -189,6 +221,7 @@ void MainComponent::paint(juce::Graphics& g) {
 void MainComponent::resized() {
   const int COL_HEIGHT = 30;
   const int PADDING = 8;
+  const int GRAPH_PADDING = 20;
   const int SLIGHT_PADDING = 4;
   const int MENU_WIDTH = 118;
   const int LABEL_WIDTH = 65;
@@ -226,7 +259,8 @@ void MainComponent::resized() {
   maxPitchSlider.setBounds(bottomRow.removeFromRight(SLIDER_WIDTH));
   maxPitchLabel.setBounds(bottomRow.removeFromRight(LABEL_WIDTH));
 
-  componentBounds.reduce(PADDING, PADDING);
+  componentBounds.reduce(componentBounds.getWidth() * 0.05,
+                         componentBounds.getHeight() * 0.2);
   graphArea = componentBounds;
 }
 
@@ -262,15 +296,15 @@ void MainComponent::buttonClicked(Button* button) {
     if (isPlaying()) {
       // Stop playback
       audioSourcePlayer.setSource(nullptr);
-      amountsToPlay.clear();
+      notesToPlay.clear();
     } else {
       // Generate notes to play
-      amountsToPlay = generateRandomAmounts(0, 0.5, 100, 50);
-      convertAmountsToNotes(amountsToPlay);
+      amountsToPlay = generateRandomAmounts(0, 0.1, 10, 150);
+      notesToPlay = convertAmountsToNotes(amountsToPlay);
       currentAmountIndex = 0;
 
       // Set frequency
-      currentFreq = midiToFreqTable[amountsToPlay.begin()->first];
+      currentFreq = midiToFreqTable[notesToPlay.begin()->first];
       phaseDelta = currentFreq / srate;
 
       // Disable sliders and menus
@@ -399,18 +433,18 @@ void MainComponent::generateSaw(const AudioSourceChannelInfo& bufferToFill,
 
 bool MainComponent::decrementNoteDurations() {
   // Decrement sample
-  amountsToPlay.getReference(currentAmountIndex).second--;
+  notesToPlay.getReference(currentAmountIndex).second--;
   // If entire note duration has been played,
-  if (amountsToPlay.getReference(currentAmountIndex).second == 0) {
+  if (notesToPlay.getReference(currentAmountIndex).second == 0) {
     // Move on to next note
     currentAmountIndex++;
     // If finished with amounts, return
-    if (currentAmountIndex >= amountsToPlay.size()) {
-      amountsToPlay.clear();
+    if (currentAmountIndex >= notesToPlay.size()) {
+      notesToPlay.clear();
       return true;
     }
     // Change phaseDelta to match new note
-    currentFreq = midiToFreqTable[amountsToPlay[currentAmountIndex].first];
+    currentFreq = midiToFreqTable[notesToPlay[currentAmountIndex].first];
     phaseDelta = currentFreq / srate;
   }
   return false;
@@ -436,12 +470,14 @@ double MainComponent::convertMidiToFreq(int midi) {
   return freq;
 }
 
-juce::Array<std::pair<double, int>> MainComponent::generateRandomAmounts(
-    double start, double end, double range, int length) {
-  juce::Array<std::pair<double, int>> arr;
+juce::Array<double> MainComponent::generateRandomAmounts(double start,
+                                                         double end,
+                                                         double range,
+                                                         int length) {
+  juce::Array<double> arr;
   maxAmount = DBL_MIN;
   minAmount = DBL_MAX;
-  int noteDurationInSamples = std::ceil(srate / (playbackBpm / 60.0));
+
   for (int i = 0; i < length; i++) {
     double a = random.nextDouble() * range;
     double b = random.nextDouble() * 2 - 1;
@@ -452,8 +488,9 @@ juce::Array<std::pair<double, int>> MainComponent::generateRandomAmounts(
     double amount = generateRandomAmount(a, b, c, d, x);
     if (amount < minAmount) minAmount = amount;
     if (amount > maxAmount) maxAmount = amount;
-    arr.add({amount, noteDurationInSamples});
+    arr.add(amount);
   }
+
   return arr;
 }
 
@@ -473,18 +510,20 @@ double MainComponent::mapAmount(double low1, double high1, double low2,
   return low2 + range2 * ratio;
 }
 
-void MainComponent::convertAmountsToNotes(
-    juce::Array<std::pair<double, int>>& amounts) {
-  for (auto& amountDurationPair : amounts) {
-    double amount = amountDurationPair.first;
-    // TODO: quantize note depending on scale
-    // TODO: if using frequencies, change min/max midi pitch
-    // to min/max frequency
+juce::Array<std::pair<double, int>> MainComponent::convertAmountsToNotes(
+    const juce::Array<double>& amounts) {
+  juce::Array<std::pair<double, int>> arr;
+  int noteDurationInSamples = std::ceil(srate / (playbackBpm / 60.0));
+
+  for (double amount : amounts) {
     double note =
         mapAmount(minAmount, maxAmount, minMidiPitch, maxMidiPitch, amount);
     double quantizedNote = quantizeNote(note);
-    amountDurationPair.first = quantizedNote;
+
+    arr.add({quantizedNote, noteDurationInSamples});
   }
+
+  return arr;
 }
 
 int MainComponent::quantizeNote(double amount) {

@@ -51,11 +51,10 @@ class MainComponent : public juce::AudioAppComponent,
   float inline getRandomSample(float amp);
   int convertFreqToMidi(double freq);
   double convertMidiToFreq(int midi);
-  juce::Array<std::pair<double, int>> generateRandomAmounts(double start,
-                                                            double end,
-                                                            double range,
-                                                            int length);
-  void convertAmountsToNotes(juce::Array<std::pair<double, int>>& amounts);
+  juce::Array<double> generateRandomAmounts(double start, double end,
+                                            double range, int length);
+  juce::Array<std::pair<double, int>> convertAmountsToNotes(
+      const juce::Array<double>& amounts);
   double generateRandomAmount(double a, double b, double c, double d, double x);
   double mapAmount(double low1, double high1, double low2, double high2,
                    double amount);
@@ -80,7 +79,8 @@ class MainComponent : public juce::AudioAppComponent,
   double currentFreq = 0.0;
   const double TwoPi{double_Pi * 2.0};
   juce::Array<double> midiToFreqTable;
-  juce::Array<std::pair<double, int>> amountsToPlay;
+  juce::Array<double> amountsToPlay;
+  juce::Array<std::pair<double, int>> notesToPlay;
   int currentAmountIndex = 0;
   double maxAmount = DBL_MIN;
   double minAmount = DBL_MAX;
