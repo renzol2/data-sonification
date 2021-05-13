@@ -35,7 +35,8 @@ class MainComponent : public juce::AudioAppComponent,
   bool isPlaying();
   void drawPlayButton(juce::DrawableButton& b, bool drawPlay);
   double inline phasor();
-  void inline generateSine(const AudioSourceChannelInfo& bufferToFill, int noteDuration);
+  void inline generateSine(const AudioSourceChannelInfo& bufferToFill,
+                           int noteDuration);
   void inline generateSquare(const AudioSourceChannelInfo& bufferToFill,
                              int noteDuration);
   void inline generateTriangle(const AudioSourceChannelInfo& bufferToFill,
@@ -60,20 +61,12 @@ class MainComponent : public juce::AudioAppComponent,
                    double amount);
   int quantizeNote(double amount);
 
-
  private:
   //==============================================================================
 
   enum OscillatorId { kNoOscilator, kSine, kSquare, kTriangle, kSaw };
 
-  enum ScaleId {
-    kNoScale,
-    kFrequency,
-    kChromatic,
-    kDiatonic,
-    kPentatonic,
-    kWholeTone
-  };
+  enum ScaleId { kNoScale, kChromatic, kDiatonic, kPentatonic, kWholeTone };
 
   const juce::Array<int> kDiatonicPitches{0, 2, 4, 5, 7, 9, 11};
   const juce::Array<int> kPentatonicPitches{0, 2, 4, 7, 9};
@@ -88,8 +81,11 @@ class MainComponent : public juce::AudioAppComponent,
   const double TwoPi{double_Pi * 2.0};
   juce::Array<double> midiToFreqTable;
   juce::Array<std::pair<double, int>> amountsToPlay;
+  int currentAmountIndex = 0;
   double maxAmount = DBL_MIN;
   double minAmount = DBL_MAX;
+
+  Rectangle<int> graphArea;
 
   Random random;
 

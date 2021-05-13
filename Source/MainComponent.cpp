@@ -41,9 +41,8 @@ MainComponent::MainComponent() {
 
   // Add items to combo box components
   oscillatorMenu.addItemList({"Sine", "Square", "Triangle", "Saw"}, kSine);
-  scaleMenu.addItemList(
-      {"Frequency", "Chromatic", "Diatonic", "Pentatonic", "Whole Tone"},
-      kFrequency);
+  scaleMenu.addItemList({"Chromatic", "Diatonic", "Pentatonic", "Whole Tone"},
+                        kChromatic);
 
   // Initialize level slider
   levelSlider.setRange(kMinLevel, kMaxLevel);
@@ -120,12 +119,6 @@ void MainComponent::prepareToPlay(int samplesPerBlockExpected,
 
 void MainComponent::getNextAudioBlock(
     const juce::AudioSourceChannelInfo& bufferToFill) {
-  // Your audio-processing code goes here!
-
-  // For more details, see the help for AudioProcessor::getNextAudioBlock()
-
-  // Right now we are not producing any data, in which case we need to clear the
-  // buffer (to prevent the output of random noise)
   bufferToFill.clearActiveBufferRegion();
 
   if (!isPlaying()) return;
@@ -187,6 +180,9 @@ void MainComponent::paint(juce::Graphics& g) {
     scaleMenu.setEnabled(true);
   } else {
     drawPlayButton(playButton, false);
+    g.setColour(juce::Colours::rebeccapurple);
+    g.drawEllipse(graphArea.toFloat(), 2.0f);
+    repaint();  // FIXME: naive way of showing graph
   }
 }
 
@@ -229,6 +225,9 @@ void MainComponent::resized() {
   minPitchLabel.setBounds(thirdRow.removeFromRight(LABEL_WIDTH));
   maxPitchSlider.setBounds(bottomRow.removeFromRight(SLIDER_WIDTH));
   maxPitchLabel.setBounds(bottomRow.removeFromRight(LABEL_WIDTH));
+
+  componentBounds.reduce(PADDING, PADDING);
+  graphArea = componentBounds;
 }
 
 void MainComponent::sliderValueChanged(Slider* slider) {
@@ -268,6 +267,7 @@ void MainComponent::buttonClicked(Button* button) {
       // Generate notes to play
       amountsToPlay = generateRandomAmounts(0, 0.5, 100, 50);
       convertAmountsToNotes(amountsToPlay);
+      currentAmountIndex = 0;
 
       // Set frequency
       currentFreq = midiToFreqTable[amountsToPlay.begin()->first];
@@ -399,16 +399,18 @@ void MainComponent::generateSaw(const AudioSourceChannelInfo& bufferToFill,
 
 bool MainComponent::decrementNoteDurations() {
   // Decrement sample
-  amountsToPlay.begin()->second--;
+  amountsToPlay.getReference(currentAmountIndex).second--;
   // If entire note duration has been played,
-  if (amountsToPlay.begin()->second == 0) {
-    // Remove that note and move on to next
-    amountsToPlay.removeAndReturn(0);
-    // Change phaseDelta to match new note
-    if (amountsToPlay.isEmpty()) {
+  if (amountsToPlay.getReference(currentAmountIndex).second == 0) {
+    // Move on to next note
+    currentAmountIndex++;
+    // If finished with amounts, return
+    if (currentAmountIndex >= amountsToPlay.size()) {
+      amountsToPlay.clear();
       return true;
     }
-    currentFreq = midiToFreqTable[amountsToPlay.begin()->first];
+    // Change phaseDelta to match new note
+    currentFreq = midiToFreqTable[amountsToPlay[currentAmountIndex].first];
     phaseDelta = currentFreq / srate;
   }
   return false;
@@ -435,9 +437,7 @@ double MainComponent::convertMidiToFreq(int midi) {
 }
 
 juce::Array<std::pair<double, int>> MainComponent::generateRandomAmounts(
-    double start, double end,
-                                                      double range,
-                                                      int length) {
+    double start, double end, double range, int length) {
   juce::Array<std::pair<double, int>> arr;
   maxAmount = DBL_MIN;
   minAmount = DBL_MAX;
@@ -458,11 +458,12 @@ juce::Array<std::pair<double, int>> MainComponent::generateRandomAmounts(
 }
 
 double MainComponent::generateRandomAmount(double a, double b, double c,
-    double d, double x) {
+                                           double d, double x) {
   return a * cos(b * x) + c * sin(d * x) + a + c;
 }
 
-double MainComponent::mapAmount(double low1, double high1, double low2, double high2, double amount) {
+double MainComponent::mapAmount(double low1, double high1, double low2,
+                                double high2, double amount) {
   auto range1 = high1 - low1;
   auto range2 = high2 - low2;
 
@@ -486,12 +487,12 @@ void MainComponent::convertAmountsToNotes(
   }
 }
 
-int MainComponent::quantizeNote(double amount) { 
+int MainComponent::quantizeNote(double amount) {
   bool isQuantized = false;
   int note = static_cast<int>(amount);
 
   const juce::Array<int>* currentScale;
-  switch (scaleId) { 
+  switch (scaleId) {
     case kDiatonic:
       currentScale = &kDiatonicPitches;
       break;
@@ -521,4 +522,3 @@ int MainComponent::quantizeNote(double amount) {
 
   return note;
 }
-
