@@ -323,19 +323,8 @@ void MainComponent::generateSine(const AudioSourceChannelInfo& bufferToFill,
 
     for (int i = 0; i < bufferToFill.numSamples; i++) {
       channelData[i] = level * std::sin(phasor() * TwoPi);
-      // Decrement sample
-      amountsToPlay.begin()->second--;
-      // If entire note duration has been played,
-      if (amountsToPlay.begin()->second == 0) {
-        // Remove that note and move on to next
-        amountsToPlay.removeAndReturn(0);
-        // Change phaseDelta to match new note
-        if (amountsToPlay.isEmpty()) {
-          return;
-        }
-        currentFreq = midiToFreqTable[amountsToPlay.begin()->first];
-        phaseDelta = currentFreq / srate;
-      }
+      bool playbackIsFinished = decrementNoteDurations();
+      if (playbackIsFinished) return;
     }
   }
 }
@@ -356,6 +345,8 @@ void MainComponent::generateSquare(const AudioSourceChannelInfo& bufferToFill,
       } else {
         channelData[i] = 1 * level;
       }
+      bool playbackIsFinished = decrementNoteDurations();
+      if (playbackIsFinished) return;
     }
   }
 }
@@ -378,6 +369,8 @@ void MainComponent::generateTriangle(const AudioSourceChannelInfo& bufferToFill,
         // Range [0.5, 1] -> [-0.5, -1] -> [0, -0.5] -> [0, -2] -> [1, -1]
         channelData[i] = level * (4 * (-currentPhasor + 0.5) + 1);
       }
+      bool playbackIsFinished = decrementNoteDurations();
+      if (playbackIsFinished) return;
     }
   }
 }
@@ -393,8 +386,27 @@ void MainComponent::generateSaw(const AudioSourceChannelInfo& bufferToFill,
 
     for (int i = 0; i < bufferToFill.numSamples; i++) {
       channelData[i] = level * (2 * phasor() - 1);
+      bool playbackIsFinished = decrementNoteDurations();
+      if (playbackIsFinished) return;
     }
   }
+}
+
+bool MainComponent::decrementNoteDurations() {
+  // Decrement sample
+  amountsToPlay.begin()->second--;
+  // If entire note duration has been played,
+  if (amountsToPlay.begin()->second == 0) {
+    // Remove that note and move on to next
+    amountsToPlay.removeAndReturn(0);
+    // Change phaseDelta to match new note
+    if (amountsToPlay.isEmpty()) {
+      return true;
+    }
+    currentFreq = midiToFreqTable[amountsToPlay.begin()->first];
+    phaseDelta = currentFreq / srate;
+  }
+  return false;
 }
 
 float MainComponent::getRandomSample() {
@@ -467,3 +479,4 @@ void MainComponent::convertAmountsToNotes(
     amountDurationPair.first = note;
   }
 }
+

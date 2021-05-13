@@ -42,6 +42,10 @@ class MainComponent : public juce::AudioAppComponent,
                                int noteDuration);
   void inline generateSaw(const AudioSourceChannelInfo& bufferToFill,
                           int noteDuration);
+  /**
+   * Returns true if playback has ended, or false otherwise
+   */
+  bool decrementNoteDurations();
   float inline getRandomSample();
   float inline getRandomSample(float amp);
   int convertFreqToMidi(double freq);
