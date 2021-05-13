@@ -8,25 +8,25 @@ MainComponent::MainComponent() {
 
   addAndMakeVisible(dataMenu);
   addAndMakeVisible(dataLabel);
-  
+
   addAndMakeVisible(oscillatorMenu);
   addAndMakeVisible(oscillatorLabel);
-  
+
   addAndMakeVisible(scaleMenu);
   addAndMakeVisible(scaleLabel);
-  
+
   addAndMakeVisible(levelSlider);
   addAndMakeVisible(levelLabel);
-  
+
   addAndMakeVisible(minPitchSlider);
   addAndMakeVisible(minPitchLabel);
-  
+
   addAndMakeVisible(maxPitchSlider);
   addAndMakeVisible(maxPitchLabel);
-  
+
   addAndMakeVisible(playbackBpmSlider);
   addAndMakeVisible(playbackBpmLabel);
-  
+
   addAndMakeVisible(minMaxUnitButton);
 
   // Add listeners to child components
@@ -41,24 +41,29 @@ MainComponent::MainComponent() {
   // Add items to combo box components
   oscillatorMenu.addItemList({"Sine", "Square", "Triangle", "Saw"}, kSine);
   scaleMenu.addItemList(
-      {"Frequency", "Chromatic", "Diatonic", "Pentatonic", "Whole Tone"}, kFrequency);
+      {"Frequency", "Chromatic", "Diatonic", "Pentatonic", "Whole Tone"},
+      kFrequency);
 
   // Initialize level slider
   levelSlider.setRange(kMinLevel, kMaxLevel);
   levelSlider.setSliderStyle(Slider::LinearHorizontal);
   levelSlider.setTextBoxStyle(Slider::TextBoxLeft, false, 90, 22);
+  levelSlider.setValue(level);
 
   // Initialize minimum pitch slider
   minPitchSlider.setRange(kMinMidiPitch, kMaxMidiPitch);
   minPitchSlider.setSliderStyle(Slider::SliderStyle::LinearHorizontal);
+  minPitchSlider.setValue(minMidiPitch);
 
   // Initialize maximum pitch slider
   maxPitchSlider.setRange(kMinMidiPitch, kMaxMidiPitch);
   maxPitchSlider.setSliderStyle(Slider::SliderStyle::LinearHorizontal);
+  maxPitchSlider.setValue(maxMidiPitch);
 
   // Initialize BPM slider
   playbackBpmSlider.setRange(kMinBpm, kMaxBpm);
   playbackBpmSlider.setSliderStyle(Slider::SliderStyle::LinearHorizontal);
+  playbackBpmSlider.setValue(playbackBpm);
 
   // Make sure you set the size of the component after
   // you add any child components.
@@ -79,6 +84,7 @@ MainComponent::MainComponent() {
   }
 
   audioSourcePlayer.setSource(nullptr);
+  setVisible(true);
 }
 
 MainComponent::~MainComponent() {
@@ -143,11 +149,14 @@ void MainComponent::resized() {
   levelSlider.setBounds(firstRow.removeFromRight(SLIDER_WIDTH));
   levelLabel.setBounds(firstRow.removeFromRight(LABEL_WIDTH));
 
-  componentBounds.removeFromTop(PADDING);  // padding between first and second row
-  
+  componentBounds.removeFromTop(
+      PADDING);  // padding between first and second row
+
   auto secondRow = componentBounds.removeFromTop(COL_HEIGHT);
   dataLabel.setBounds(secondRow.removeFromLeft(LABEL_WIDTH));
   dataMenu.setBounds(secondRow.removeFromLeft(MENU_WIDTH));
+  playbackBpmSlider.setBounds(secondRow.removeFromRight(SLIDER_WIDTH));
+  playbackBpmLabel.setBounds(secondRow.removeFromRight(LABEL_WIDTH));
 
   auto bottomRow = componentBounds.removeFromBottom(COL_HEIGHT);
   auto thirdRow = componentBounds.removeFromBottom(COL_HEIGHT);
@@ -162,9 +171,30 @@ void MainComponent::resized() {
   minPitchLabel.setBounds(thirdRow.removeFromRight(LABEL_WIDTH));
   maxPitchSlider.setBounds(bottomRow.removeFromRight(SLIDER_WIDTH));
   maxPitchLabel.setBounds(bottomRow.removeFromRight(LABEL_WIDTH));
-
 }
 
-void MainComponent::sliderValueChanged(Slider* slider) {}
+void MainComponent::sliderValueChanged(Slider* slider) {
+  if (slider == &levelSlider) {
+    level = slider->getValue();
+  } else if (slider == &minPitchSlider) {
+    minMidiPitch = slider->getValue();
+  } else if (slider == &maxPitchSlider) {
+    maxMidiPitch = slider->getValue();
+  } else if (slider == &playbackBpmSlider) {
+    playbackBpm = slider->getValue();
+  }
+}
 
-void MainComponent::comboBoxChanged(ComboBox* menu) {}
+void MainComponent::comboBoxChanged(ComboBox* menu) {
+  int index = menu->getSelectedItemIndex();
+  if (menu == &oscillatorMenu) {
+    auto nextOsc = OscillatorId(kNoOscilator + index + 1);
+    DBG(juce::String(nextOsc));
+    oscillatorId = nextOsc;
+  } else if (menu == &scaleMenu) {
+    auto nextScale = ScaleId(kNoScale + index + 1);
+    DBG(juce::String(nextScale));
+    scaleId = nextScale;
+  } else if (menu == &dataMenu) {
+  }
+}

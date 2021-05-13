@@ -34,7 +34,14 @@ class MainComponent : public juce::AudioAppComponent,
 
   enum OscillatorId { kNoOscilator, kSine, kSquare, kTriangle, kSaw };
 
-  enum ScaleId { kNoScale, kFrequency, kChromatic, kDiatonic, kPentatonic, kWholeTone };
+  enum ScaleId {
+    kNoScale,
+    kFrequency,
+    kChromatic,
+    kDiatonic,
+    kPentatonic,
+    kWholeTone
+  };
 
   AudioSourcePlayer audioSourcePlayer;
 
@@ -55,7 +62,7 @@ class MainComponent : public juce::AudioAppComponent,
 
   Slider levelSlider;
   Label levelLabel{"levelLabel", "Level: "};
-  double level = 0.0;
+  double level = 0.5;
   const double kMinLevel = 0.0;
   const double kMaxLevel = 1.0;
 
@@ -74,7 +81,7 @@ class MainComponent : public juce::AudioAppComponent,
   const double kMaxFreqPitch = 18000;
 
   Slider playbackBpmSlider;
-  Label playbackBpmLabel{"playbackBpmLabel", "Playback BPM"};
+  Label playbackBpmLabel{"playbackBpmLabel", "BPM"};
   const int kMinBpm = 0;
   const int kMaxBpm = 999;
   int playbackBpm = 200;
