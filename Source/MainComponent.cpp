@@ -73,7 +73,6 @@ MainComponent::MainComponent() {
   // Initialize MIDI to frequency lookup table
   for (int i = kMinMidiPitch; i <= kMaxMidiPitch; i++) {
     double freq = convertMidiToFreq(i);
-    DBG(freq);
     midiToFreqTable.add(freq);
   }
 
@@ -212,7 +211,6 @@ void MainComponent::sliderValueChanged(Slider* slider) {
     minMidiPitch = slider->getValue();
     // FIXME: temporarily using min midi pitch to test oscillators
     currentFreq = midiToFreqTable[minMidiPitch];
-    DBG(currentFreq);
     phaseDelta = currentFreq / srate;
   } else if (slider == &maxPitchSlider) {
     maxMidiPitch = slider->getValue();
@@ -225,12 +223,10 @@ void MainComponent::comboBoxChanged(ComboBox* menu) {
   int index = menu->getSelectedItemIndex();
   if (menu == &oscillatorMenu) {
     auto nextOsc = OscillatorId(kNoOscilator + index + 1);
-    DBG(juce::String(nextOsc));
     oscillatorId = nextOsc;
     if (oscillatorId != kNoOscilator) playButton.setEnabled(true);
   } else if (menu == &scaleMenu) {
     auto nextScale = ScaleId(kNoScale + index + 1);
-    DBG(juce::String(nextScale));
     scaleId = nextScale;
   } else if (menu == &dataMenu) {
   }
@@ -292,12 +288,59 @@ void MainComponent::generateSine(const AudioSourceChannelInfo& bufferToFill) {
 }
 
 void MainComponent::generateSquare(const AudioSourceChannelInfo& bufferToFill) {
+  double startingPhase = phase;
+  for (int channel = 0; channel < bufferToFill.buffer->getNumChannels();
+       channel++) {
+    phase = startingPhase;
+    auto channelData =
+        bufferToFill.buffer->getWritePointer(channel, bufferToFill.startSample);
+
+    for (int i = 0; i < bufferToFill.numSamples; i++) {
+      double currentPhasor = phasor();
+      if (currentPhasor <= 0.5) {
+        channelData[i] = -1 * level;
+      } else {
+        channelData[i] = 1 * level;
+      }
+    }
+  }
 }
 
 void MainComponent::generateTriangle(
-    const AudioSourceChannelInfo& bufferToFill) {}
+    const AudioSourceChannelInfo& bufferToFill) {
+  double startingPhase = phase;
+  for (int channel = 0; channel < bufferToFill.buffer->getNumChannels();
+       channel++) {
+    phase = startingPhase;
+    auto channelData =
+        bufferToFill.buffer->getWritePointer(channel, bufferToFill.startSample);
 
-void MainComponent::generateSaw(const AudioSourceChannelInfo& bufferToFill) {}
+    for (int i = 0; i < bufferToFill.numSamples; i++) {
+      double currentPhasor = phasor();
+      if (currentPhasor <= 0.5) {
+        // Range [0, 0.5] -> [0, 2] -> [-1, 1]
+        channelData[i] = level * (4 * currentPhasor - 1);
+      } else {
+        // Range [0.5, 1] -> [-0.5, -1] -> [0, -0.5] -> [0, -2] -> [1, -1]
+        channelData[i] = level * (4 * (-currentPhasor + 0.5) + 1);
+      }
+    }
+  }
+}
+
+void MainComponent::generateSaw(const AudioSourceChannelInfo& bufferToFill) {
+  double startingPhase = phase;
+  for (int channel = 0; channel < bufferToFill.buffer->getNumChannels();
+       channel++) {
+    phase = startingPhase;
+    auto channelData =
+        bufferToFill.buffer->getWritePointer(channel, bufferToFill.startSample);
+
+    for (int i = 0; i < bufferToFill.numSamples; i++) {
+      channelData[i] = level * (2 * phasor() - 1);
+    }
+  }
+}
 
 float MainComponent::getRandomSample() {
   return random.nextFloat() * 2.0f - 1.0f;
