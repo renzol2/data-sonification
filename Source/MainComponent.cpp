@@ -52,23 +52,30 @@ MainComponent::MainComponent() {
   levelSlider.setValue(level);
 
   // Initialize minimum pitch slider
-  minPitchSlider.setRange(kMinMidiPitch, kMaxMidiPitch);
+  minPitchSlider.setRange(kMinMidiPitch, kMaxMidiPitch, 1);
   minPitchSlider.setSliderStyle(Slider::SliderStyle::LinearHorizontal);
   minPitchSlider.setValue(minMidiPitch);
 
   // Initialize maximum pitch slider
-  maxPitchSlider.setRange(kMinMidiPitch, kMaxMidiPitch);
+  maxPitchSlider.setRange(kMinMidiPitch, kMaxMidiPitch, 1);
   maxPitchSlider.setSliderStyle(Slider::SliderStyle::LinearHorizontal);
   maxPitchSlider.setValue(maxMidiPitch);
 
   // Initialize BPM slider
-  playbackBpmSlider.setRange(kMinBpm, kMaxBpm);
+  playbackBpmSlider.setRange(kMinBpm, kMaxBpm, 1);
   playbackBpmSlider.setSliderStyle(Slider::SliderStyle::LinearHorizontal);
   playbackBpmSlider.setValue(playbackBpm);
 
   // Initialize play button
   playButton.setEnabled(false);
   drawPlayButton(playButton, true);
+
+  // Initialize MIDI to frequency lookup table
+  for (int i = kMinMidiPitch; i <= kMaxMidiPitch; i++) {
+    double freq = convertMidiToFreq(i);
+    DBG(freq);
+    midiToFreqTable.add(freq);
+  }
 
   // Make sure you set the size of the component after
   // you add any child components.
@@ -107,6 +114,9 @@ void MainComponent::prepareToPlay(int samplesPerBlockExpected,
   // but be careful - it will be called on the audio thread, not the GUI thread.
 
   // For more details, see the help for AudioProcessor::prepareToPlay()
+  srate = sampleRate;
+  phase = 0;
+  phaseDelta = currentFreq / srate;
 }
 
 void MainComponent::getNextAudioBlock(
@@ -118,6 +128,23 @@ void MainComponent::getNextAudioBlock(
   // Right now we are not producing any data, in which case we need to clear the
   // buffer (to prevent the output of random noise)
   bufferToFill.clearActiveBufferRegion();
+
+  switch (oscillatorId) {
+    case kSine:
+      generateSine(bufferToFill);
+      break;
+    case kSquare:
+      generateSquare(bufferToFill);
+      break;
+    case kTriangle:
+      generateTriangle(bufferToFill);
+      break;
+    case kSaw:
+      generateSaw(bufferToFill);
+      break;
+    case kNoOscilator:
+      break;
+  }
 }
 
 void MainComponent::releaseResources() {
@@ -183,6 +210,10 @@ void MainComponent::sliderValueChanged(Slider* slider) {
     level = slider->getValue();
   } else if (slider == &minPitchSlider) {
     minMidiPitch = slider->getValue();
+    // FIXME: temporarily using min midi pitch to test oscillators
+    currentFreq = midiToFreqTable[minMidiPitch];
+    DBG(currentFreq);
+    phaseDelta = currentFreq / srate;
   } else if (slider == &maxPitchSlider) {
     maxMidiPitch = slider->getValue();
   } else if (slider == &playbackBpmSlider) {
@@ -246,7 +277,19 @@ double MainComponent::phasor() {
   return p;
 }
 
-void MainComponent::generateSine(const AudioSourceChannelInfo& bufferToFill) {}
+void MainComponent::generateSine(const AudioSourceChannelInfo& bufferToFill) {
+  double startingPhase = phase;
+  for (int channel = 0; channel < bufferToFill.buffer->getNumChannels();
+       channel++) {
+    phase = startingPhase;
+    auto channelData =
+        bufferToFill.buffer->getWritePointer(channel, bufferToFill.startSample);
+
+    for (int i = 0; i < bufferToFill.numSamples; i++) {
+      channelData[i] = level * std::sin(phasor() * TwoPi);
+    }
+  }
+}
 
 void MainComponent::generateSquare(const AudioSourceChannelInfo& bufferToFill) {
 }
@@ -262,4 +305,16 @@ float MainComponent::getRandomSample() {
 
 float MainComponent::getRandomSample(float amp) {
   return getRandomSample() * amp;
+}
+
+int MainComponent::convertFreqToMidi(double freq) {
+  // Taken from: https://www.music.mcgill.ca/~gary/307/week1/node28.html
+  int midi = (int)((12 * log(freq / 220.0) / log(2.0)) + 57.01);
+  return midi;
+}
+
+double MainComponent::convertMidiToFreq(int midi) {
+  // Taken from: https://www.music.mcgill.ca/~gary/307/week1/node28.html
+  double freq = 440.0 * std::pow(2, (double)(midi - 69) / 12.0);
+  return freq;
 }

@@ -41,6 +41,8 @@ class MainComponent : public juce::AudioAppComponent,
   void inline generateSaw(const AudioSourceChannelInfo& bufferToFill);
   float inline getRandomSample();
   float inline getRandomSample(float amp);
+  int convertFreqToMidi(double freq);
+  double convertMidiToFreq(int midi);
 
  private:
   //==============================================================================
@@ -61,6 +63,8 @@ class MainComponent : public juce::AudioAppComponent,
   double srate = 0.0;
   double phaseDelta = 0.0;
   double currentFreq = 0.0;
+  const double TwoPi{double_Pi * 2.0};
+  juce::Array<double> midiToFreqTable;
 
   Random random;
 
